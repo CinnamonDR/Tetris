@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYBER-TETRIS PRO CENTERED</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #050505;
+            --panel-bg: #0f0f12;
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff00ff;
+            --neon-green: #39ff14;
+            --bright-text: #ffffff;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--bright-text);
+            font-family: 'Segoe UI', sans-serif;
+            overflow-x: hidden;
+            touch-action: none;
+        }
+
+        .cyber-card {
+            background: var(--panel-bg);
+            border: 1px solid #333;
+            border-top: 4px solid var(--neon-blue);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: #000;
+            border: 3px solid var(--neon-blue);
+        }
+
+        #next-canvas {
+            border: 2px solid var(--neon-pink);
+            background: #080808;
+            width: 100px;
+            height: 100px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--neon-green);
+            font-family: monospace;
+        }
+
+        .control-hint {
+            font-size: 0.75rem;
+            background: rgba(255,255,255,0.05);
+            padding: 4px 8px;
+            margin-bottom: 4px;
+            border-left: 2px solid var(--neon-pink);
+        }
+
+        #overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 100; text-align: center;
+        }
+
+        .ctrl-btn {
+            background: #1a1a1a; border: 1px solid #444; color: white;
+            height: 50px; display: flex; align-items: center; justify-content: center;
+            border-radius: 5px; cursor: pointer;
+        }
+        .ctrl-btn:active { background: var(--neon-blue); color: black; }
+
+        /* Estilos del Modal Documental */
+        .modal-content {
+            background-color: var(--panel-bg);
+            border: 2px solid var(--neon-blue);
+            color: white;
+        }
+        .modal-header { border-bottom: 1px solid #333; }
+        .modal-footer { border-top: 1px solid #333; }
+        .history-text {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            text-align: justify;
+        }
+        .highlight-blue { color: var(--neon-blue); font-weight: bold; }
+        .highlight-pink { color: var(--neon-pink); font-weight: bold; }
+    </style>
+</head>
+<body class="py-3">
+
+<div class="container-fluid">
+    <div class="row g-3 justify-content-center">
+        
+        <!-- CONTROLES (IZQUIERDA) -->
+        <div class="col-lg-2 col-md-3 d-none d-md-block">
+            <div class="cyber-card p-3">
+                <h6 class="text-uppercase fw-bold mb-3" style="color: var(--neon-pink)">
+                    <i class="fas fa-keyboard me-2"></i>Controles
+                </h6>
+                <div class="control-hint"><kbd>←</kbd><kbd>→</kbd> Mover</div>
+                <div class="control-hint"><kbd>↑</kbd> ó <kbd>X</kbd> Rotar</div>
+                <div class="control-hint"><kbd>↓</kbd> Bajar</div>
+                <div class="control-hint"><kbd>ESPACIO</kbd> Drop</div>
+                <hr class="border-secondary text-muted">
+                <div class="small text-muted mb-2">MOUSE:</div>
+                <div class="control-hint">Arrastrar: Mover</div>
+                <div class="control-hint">Click: Rotar</div>
+            </div>
+        </div>
+
+        <!-- JUEGO (CENTRO) -->
+        <div class="col-auto position-relative">
+            <div class="position-relative">
+                <canvas id="tetris"></canvas>
+                <div id="overlay">
+                    <h2 class="fw-bold mb-4" id="msg-main" style="letter-spacing: 2px;">NEON TETRIS</h2>
+                    <div class="px-4 w-100" style="max-width: 280px;">
+                        <select id="diff-speed" class="form-select bg-dark text-white border-secondary mb-3">
+                            <option value="800">DIF: RECLUTA</option>
+                            <option value="450" selected>DIF: AGENTE</option>
+                            <option value="150">DIF: CYBER-GHOST</option>
+                        </select>
+                        <button id="start-btn" class="btn btn-info w-100 fw-bold py-2 shadow">INICIAR SESIÓN</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SIGUIENTE Y HUD (DERECHA) --> 
+        <div class="col-lg-2 col-md-3">
+            <div class="cyber-card p-2 mb-3 text-center">
+                <div class="small text-uppercase text-muted fw-bold mb-2">Siguiente</div>
+                <canvas id="next-canvas" width="100" height="100"></canvas>
+            </div>
+
+            <div class="cyber-card p-2 mb-2 text-center">
+                <div class="small text-uppercase text-muted">Puntos</div>
+                <div id="score" class="stat-value">000000</div>
+            </div>
+            <div class="cyber-card p-2 mb-2 text-center">
+                <div class="small text-uppercase text-muted">Tiempo</div>
+                <div id="timer" class="stat-value">10:00</div>
+            </div>
+
+            <div class="row g-1 mt-3 d-md-none">
+                <div class="col-4"><div class="ctrl-btn" id="btn-left"><i class="fas fa-arrow-left"></i></div></div>
+                <div class="col-4"><div class="ctrl-btn" id="btn-rotate"><i class="fas fa-sync"></i></div></div>
+                <div class="col-4"><div class="ctrl-btn" id="btn-right"><i class="fas fa-arrow-right"></i></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER CON BOTÓN DOCUMENTAL -->
+    <div class="row mt-4">
+        <div class="col-12 text-center">
+            <button class="btn btn-outline-secondary btn-sm opacity-75" data-bs-toggle="modal" data-bs-target="#docModal">
+                <i class="fas fa-database me-2"></i>ACCEDER A ARCHIVOS HISTÓRICOS: EL ORIGEN DEL TETRIS
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DOCUMENTAL -->
+<div class="modal fade" id="docModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold text-uppercase" style="color: var(--neon-blue)">
+                    <i class="fas fa-history me-2"></i>Archivo 1984: La Historia Detrás del Bloque
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body history-text px-4">
+                <p>En el corazón de la Unión Soviética de 1984, un ingeniero llamado <span class="highlight-blue">Alexey Pajitnov</span> creó lo que hoy conocemos como Tetris en una computadora Electronika 60. Inspirado en los rompecabezas de pentominó, Pajitnov programó el juego por pura curiosidad matemática.</p>
+                
+                <p>Sin embargo, la verdadera batalla no fue la programación, sino la <span class="highlight-pink">guerra de licencias</span>. Durante la Guerra Fría, los derechos pertenecían al estado soviético (ELORG). Entró en escena <span class="highlight-blue">Henk Rogers</span>, un visionario que arriesgó todo viajando a Moscú con una visa de turista para asegurar los derechos de consola para una nueva máquina secreta de Nintendo.</p>
+                
+                <p>La pieza clave fue la <span class="highlight-pink">Game Boy</span>. Rogers convenció a Nintendo de que no incluyeran Mario con la consola, sino Tetris: <em>"Si quieres que los niños compren la consola, incluye a Mario; pero si quieres que TODOS la compren, incluye Tetris"</em>. En 1989, el port para Game Boy se convirtió en el fenómeno global que definió la industria, demostrando que un diseño simple y perfecto puede trascender fronteras políticas e ideológicas.</p>
+                
+                <hr class="border-secondary">
+                <p class="small italic text-center text-muted">"Esto no tiene nada que ver con el proyecto pero es algo que queria decir en verdad"</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-info" data-bs-dismiss="modal">CERRAR ARCHIVO</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+/** LÓGICA CORE (NO CAMBIADA) **/
+const canvas = document.getElementById('tetris');
+const ctx = canvas.getContext('2d');
+const nextCanvas = document.getElementById('next-canvas');
+const nctx = nextCanvas.getContext('2d');
+
+const SQ = 28; 
+const ROW = 20; const COL = 10;
+canvas.width = COL * SQ; canvas.height = ROW * SQ;
+
+const I=[[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]], J=[[0,1,0],[0,1,0],[1,1,0]], 
+      L=[[0,1,0],[0,1,0],[0,1,1]], O=[[1,1],[1,1]], S=[[0,1,1],[1,1,0],[0,0,0]], 
+      T=[[0,1,0],[1,1,1],[0,0,0]], Z=[[1,1,0],[0,1,1],[0,0,0]];
+
+const PIECES = [[I,1],[J,2],[L,3],[O,4],[S,5],[T,6],[Z,7]];
+const COLORS = [null, "#00f3ff", "#ff00ff", "#ff8000", "#ffff00", "#39ff14", "#9d00ff", "#ff003c"];
+
+let board = [];
+let score = 0, gameTime = 600; 
+let isGameOver = true, isAnimating = false;
+let p, nextP;
+let dropStart = Date.now(), dropSpeed = 500;
+let gameLoop, clockInterval;
+
+function drawSquare(x, y, colorId, context, size) {
+    if(colorId === 0) {
+        context.fillStyle = "#000";
+        context.fillRect(x*size, y*size, size, size);
+        context.strokeStyle = "#111";
+        context.strokeRect(x*size, y*size, size, size);
+    } else if(colorId === "FLASH") {
+        context.fillStyle = "#fff";
+        context.fillRect(x*size, y*size, size, size);
+    } else {
+        context.fillStyle = COLORS[colorId];
+        context.fillRect(x*size, y*size, size, size);
+        context.strokeStyle = "rgba(255,255,255,0.4)";
+        context.lineWidth = 2;
+        context.strokeRect(x*size+2, y*size+2, size-4, size-4);
+        context.strokeStyle = "#000";
+        context.lineWidth = 1;
+        context.strokeRect(x*size, y*size, size, size);
+    }
+}
+
+function drawNext() {
+    nctx.fillStyle = "#080808";
+    nctx.fillRect(0, 0, 100, 100);
+    const blockSize = 20; 
+    const pattern = nextP.pattern;
+    const pWidth = pattern[0].length;
+    const pHeight = pattern.length;
+    const startX = (100 - (pWidth * blockSize)) / 2;
+    const startY = (100 - (pHeight * blockSize)) / 2;
+
+    for(let r=0; r<pHeight; r++) {
+        for(let c=0; c<pWidth; c++) {
+            if(pattern[r][c]) {
+                nctx.fillStyle = COLORS[nextP.colorId];
+                nctx.fillRect(startX + c*blockSize, startY + r*blockSize, blockSize, blockSize);
+                nctx.strokeStyle = "rgba(255,255,255,0.3)";
+                nctx.strokeRect(startX + c*blockSize + 2, startY + r*blockSize + 2, blockSize - 4, blockSize - 4);
+                nctx.strokeStyle = "#000";
+                nctx.strokeRect(startX + c*blockSize, startY + r*blockSize, blockSize, blockSize);
+            }
+        }
+    }
+}
+
+function render() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    for(let r=0; r<ROW; r++) 
+        for(let c=0; c<COL; c++) 
+            drawSquare(c, r, board[r][c], ctx, SQ);
+    if(p) p.draw();
+}
+
+class Piece {
+    constructor(pattern, colorId) {
+        this.pattern = pattern;
+        this.colorId = colorId;
+        this.activePattern = this.pattern;
+        this.x = 3; this.y = -2;
+    }
+    draw() {
+        for(let r=0; r<this.activePattern.length; r++)
+            for(let c=0; c<this.activePattern[r].length; c++)
+                if(this.activePattern[r][c]) drawSquare(this.x+c, this.y+r, this.colorId, ctx, SQ);
+    }
+    collision(x, y, piece) {
+        for(let r=0; r<piece.length; r++) {
+            for(let c=0; c<piece[r].length; c++) {
+                if(!piece[r][c]) continue;
+                let newX = this.x+c+x, newY = this.y+r+y;
+                if(newX<0 || newX>=COL || newY>=ROW) return true;
+                if(newY<0) continue;
+                if(board[newY][newX] !== 0) return true;
+            }
+        }
+        return false;
+    }
+    moveDown() {
+        if(!this.collision(0,1,this.activePattern)) { this.y++; render(); }
+        else { this.lock(); }
+    }
+    moveLeft() { if(!this.collision(-1,0,this.activePattern)){ this.x--; render(); } }
+    moveRight() { if(!this.collision(1,0,this.activePattern)){ this.x++; render(); } }
+    rotate() {
+        let next = this.activePattern[0].map((_, i) => this.activePattern.map(row => row[i]).reverse());
+        if(!this.collision(0,0,next)) { this.activePattern = next; render(); }
+    }
+    lock() {
+        for(let r=0; r<this.activePattern.length; r++) {
+            for(let c=0; c<this.activePattern[r].length; c++) {
+                if(!this.activePattern[r][c]) continue;
+                if(this.y+r < 0) { gameOver(); return; }
+                board[this.y+r][this.x+c] = this.colorId;
+            }
+        }
+        checkLines();
+    }
+}
+
+async function checkLines() {
+    let fullRows = [];
+    for(let r=0; r<ROW; r++) if(board[r].every(v => v !== 0)) fullRows.push(r);
+    if(fullRows.length > 0) {
+        isAnimating = true;
+        for(let i=0; i<4; i++) {
+            fullRows.forEach(r => board[r] = board[r].map(() => i % 2 === 0 ? "FLASH" : 0));
+            render();
+            await new Promise(res => setTimeout(res, 80));
+        }
+        fullRows.forEach(r => { board.splice(r, 1); board.unshift(Array(COL).fill(0)); });
+        score += [0, 100, 300, 500, 800][fullRows.length];
+        document.getElementById('score').innerText = score.toString().padStart(6,'0');
+        isAnimating = false;
+    }
+    spawnPiece(); render();
+}
+
+function spawnPiece() {
+    p = nextP;
+    const r = Math.floor(Math.random()*PIECES.length);
+    nextP = new Piece(PIECES[r][0], PIECES[r][1]);
+    drawNext();
+}
+
+function gameOver() {
+    isGameOver = true;
+    cancelAnimationFrame(gameLoop);
+    clearInterval(clockInterval);
+    document.getElementById('overlay').style.display = 'flex';
+    document.getElementById('msg-main').innerText = "SYSTEM FAILURE";
+    document.getElementById('msg-main').style.color = "#ff0000";
+}
+
+function update() {
+    if(isGameOver || isAnimating) { gameLoop = requestAnimationFrame(update); return; }
+    let now = Date.now();
+    if(now - dropStart > dropSpeed) { p.moveDown(); dropStart = now; }
+    gameLoop = requestAnimationFrame(update);
+}
+
+document.getElementById('start-btn').onclick = () => {
+    board = Array.from({length: ROW}, () => Array(COL).fill(0));
+    score = 0; gameTime = 600;
+    dropSpeed = parseInt(document.getElementById('diff-speed').value);
+    isGameOver = false;
+    document.getElementById('overlay').style.display = 'none';
+    const r1 = Math.floor(Math.random()*PIECES.length);
+    const r2 = Math.floor(Math.random()*PIECES.length);
+    p = new Piece(PIECES[r1][0], PIECES[r1][1]);
+    nextP = new Piece(PIECES[r2][0], PIECES[r2][1]);
+    drawNext(); render(); update();
+    if(clockInterval) clearInterval(clockInterval);
+    clockInterval = setInterval(() => {
+        gameTime--;
+        let m = Math.floor(gameTime/60).toString().padStart(2,'0');
+        let s = (gameTime%60).toString().padStart(2,'0');
+        document.getElementById('timer').innerText = `${m}:${s}`;
+        if(gameTime <= 0) gameOver();
+    }, 1000);
+};
+
+document.addEventListener('keydown', e => {
+    if(isGameOver || isAnimating) return;
+    if(e.key === "ArrowLeft") p.moveLeft();
+    if(e.key === "ArrowRight") p.moveRight();
+    if(e.key === "ArrowDown") p.moveDown();
+    if(e.key === "ArrowUp" || e.key === "x") p.rotate();
+    if(e.key === " ") { while(!p.collision(0,1,p.activePattern)) p.y++; p.lock(); }
+});
+
+let isDragging = false, lastX = 0;
+canvas.onmousedown = (e) => { isDragging = true; lastX = e.clientX; }
+window.onmouseup = () => isDragging = false;
+canvas.onmousemove = (e) => {
+    if(!isDragging || isGameOver || isAnimating) return;
+    if(Math.abs(e.clientX - lastX) > SQ) {
+        if(e.clientX > lastX) p.moveRight(); else p.moveLeft();
+        lastX = e.clientX;
+    }
+}
+canvas.onclick = () => { if(!isGameOver && !isAnimating) p.rotate(); }
+document.getElementById('btn-left').onclick = () => p.moveLeft();
+document.getElementById('btn-right').onclick = () => p.moveRight();
+document.getElementById('btn-rotate').onclick = () => p.rotate();
+
+render();
+</script>
+</body>
+</html>
